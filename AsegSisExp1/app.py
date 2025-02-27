@@ -59,7 +59,7 @@ def calcular_puntaje(cliente):
     return puntaje
 
 def clasificar_riesgo(puntaje):
-    if puntaje <= 1:
+    if puntaje <= 2:
         return "Bajo Riesgo"
     elif 3 <= puntaje <= 4:
         return "Moderado Riesgo"
