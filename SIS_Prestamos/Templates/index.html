@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Evaluación de Préstamos Bancarios</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .resultado-aprobado {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .resultado-condicional {
+            background-color: #fff3cd;
+            border-color: #ffeeba;
+            color: #856404;
+        }
+        .resultado-rechazado {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .riesgo-bajo {
+            color: green;
+            font-weight: bold;
+        }
+        .riesgo-moderado {
+            color: orange;
+            font-weight: bold;
+        }
+        .riesgo-alto {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Sistema de Evaluación de Préstamos Bancarios</h1>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Formulario de Evaluación</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="formularioPrestamo">
+                            <div class="mb-3">
+                                <label for="puntaje_credito" class="form-label">Puntaje de Crédito</label>
+                                <input type="number" class="form-control" id="puntaje_credito" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="ingresos_mensuales" class="form-label">Ingresos Mensuales</label>
+                                <input type="number" class="form-control" id="ingresos_mensuales" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="cuota_prestamo" class="form-label">Cuota del Préstamo</label>
+                                <input type="number" class="form-control" id="cuota_prestamo" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="proporcion_deuda_ingreso" class="form-label">Proporción Deuda/Ingreso</label>
+                                <input type="number" step="0.01" class="form-control" id="proporcion_deuda_ingreso" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tipo_empleo" class="form-label">Tipo de Empleo</label>
+                                <select class="form-select" id="tipo_empleo" required>
+                                    <option value="fijo">Fijo</option>
+                                    <option value="temporal">Temporal</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="años_empleo" class="form-label">Años de Empleo</label>
+                                <input type="number" step="0.5" class="form-control" id="años_empleo" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="tipo_garantia" class="form-label">Tipo de Garantía</label>
+                                <select class="form-select" id="tipo_garantia" required>
+                                    <option value="propiedad">Propiedad</option>
+                                    <option value="aval_alto_valor">Aval de Alto Valor</option>
+                                    <option value="aval_bajo_valor">Aval de Bajo Valor</option>
+                                    <option value="ninguna">Ninguna</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="historial_prestamos" class="form-label">Historial de Préstamos</label>
+                                <select class="form-select" id="historial_prestamos" required>
+                                    <option value="sin_historial">Sin Historial</option>
+                                    <option value="sin_retrasos">Sin Retrasos</option>
+                                    <option value="retrasos_ocasionales">Retrasos Ocasionales</option>
+                                    <option value="incumplimientos">Incumplimientos</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Evaluar Préstamo</button>
+                            <button type="button" id="btnCargarEjemplo" class="btn btn-secondary">Cargar Ejemplo</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Resultado de la Evaluación</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultado" class="alert d-none mb-4">
+                            <h4 id="decision"></h4>
+                        </div>
+
+                       <h5>Factores:</h5>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Factor</th>
+                                    <th>Grado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="factoresRiesgo">
+                                <!-- Aquí se mostrarán los factores de riesgo -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const formulario = document.getElementById('formularioPrestamo');
+            const btnCargarEjemplo = document.getElementById('btnCargarEjemplo');
+            const resultadoDiv = document.getElementById('resultado');
+            const decisionEl = document.getElementById('decision');
+            const factoresRiesgoEl = document.getElementById('factoresRiesgo');
+
+            formulario.addEventListener('submit', function(e) {
+                e.preventDefault();
+                evaluarPrestamo();
+            });
+
+            btnCargarEjemplo.addEventListener('click', function() {
+                cargarClienteEjemplo();
+            });
+
+            async function evaluarPrestamo() {
+                const datos = {
+                    puntaje_credito: document.getElementById('puntaje_credito').value,
+                    ingresos_mensuales: document.getElementById('ingresos_mensuales').value,
+                    cuota_prestamo: document.getElementById('cuota_prestamo').value,
+                    proporcion_deuda_ingreso: document.getElementById('proporcion_deuda_ingreso').value,
+                    tipo_empleo: document.getElementById('tipo_empleo').value,
+                    años_empleo: document.getElementById('años_empleo').value,
+                    tipo_garantia: document.getElementById('tipo_garantia').value,
+                    historial_prestamos: document.getElementById('historial_prestamos').value
+                };
+
+                try {
+                    const response = await fetch('/evaluar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(datos)
+                    });
+
+                    const resultado = await response.json();
+
+                    if (resultado.error) {
+                        mostrarError(resultado.error);
+                        return;
+                    }
+
+                    mostrarResultado(resultado);
+                } catch (error) {
+                    mostrarError('Error al procesar la solicitud');
+                }
+            }
+
+            function mostrarResultado(resultado) {
+                resultadoDiv.classList.remove('d-none', 'resultado-aprobado', 'resultado-condicional', 'resultado-rechazado');
+
+                if (resultado.decision === 'Aprobado') {
+                    resultadoDiv.classList.add('alert-success', 'resultado-aprobado');
+                } else if (resultado.decision === 'Aprobado condicional') {
+                    resultadoDiv.classList.add('alert-warning', 'resultado-condicional');
+                } else {
+                    resultadoDiv.classList.add('alert-danger', 'resultado-rechazado');
+                }
+
+                decisionEl.textContent = `Decisión: ${resultado.decision}`;
+
+                mostrarFactoresRiesgo(resultado.factores_riesgo);
+            }
+
+            function mostrarFactoresRiesgo(factores) {
+                factoresRiesgoEl.innerHTML = '';
+
+                const factoresNombre = {
+                    riesgo_credito: 'Riesgo de Crédito',
+                    riesgo_ingresos: 'Riesgo de Ingresos',
+                    riesgo_deuda_ingreso: 'Riesgo de Deuda/Ingreso',
+                    riesgo_empleo: 'Riesgo de Empleo',
+                    riesgo_garantia: 'Riesgo de Garantía',
+                    riesgo_historial_prestamos: 'Riesgo de Historial de Préstamos'
+                };
+
+                for (const [factor, valor] of Object.entries(factores)) {
+                    if (factor === 'cantidad_riesgo_alto') continue;
+
+                    const row = document.createElement('tr');
+
+                    const tdFactor = document.createElement('td');
+                    tdFactor.textContent = factoresNombre[factor] || factor;
+
+                    const tdRiesgo = document.createElement('td');
+                    if (valor === 'bajo') {
+                        tdRiesgo.classList.add('riesgo-bajo');
+                    } else if (valor === 'moderado') {
+                        tdRiesgo.classList.add('riesgo-moderado');
+                    } else if (valor === 'alto') {
+                        tdRiesgo.classList.add('riesgo-alto');
+                    }
+                    tdRiesgo.textContent = valor.toUpperCase();
+
+                    row.appendChild(tdFactor);
+                    row.appendChild(tdRiesgo);
+
+                    factoresRiesgoEl.appendChild(row);
+                }
+
+                // Añadir fila de cantidad de riesgos altos
+                const rowCantidad = document.createElement('tr');
+                rowCantidad.classList.add('table-secondary');
+
+                const tdLabel = document.createElement('td');
+                tdLabel.innerHTML = '<strong>Cantidad de Riesgos Altos</strong>';
+
+                const tdCantidad = document.createElement('td');
+                tdCantidad.innerHTML = `<strong>${factores.cantidad_riesgo_alto}</strong>`;
+
+                rowCantidad.appendChild(tdLabel);
+                rowCantidad.appendChild(tdCantidad);
+
+                factoresRiesgoEl.appendChild(rowCantidad);
+            }
+
+            function mostrarError(mensaje) {
+                resultadoDiv.classList.remove('d-none', 'resultado-aprobado', 'resultado-condicional', 'resultado-rechazado');
+                resultadoDiv.classList.add('alert-danger');
+                decisionEl.textContent = `Error: ${mensaje}`;
+                factoresRiesgoEl.innerHTML = '';
+            }
+
+            async function cargarClienteEjemplo() {
+                try {
+                    const response = await fetch('/api/clientes');
+                    const clientes = await response.json();
+
+                    if (clientes.length > 0) {
+                        const indice = Math.floor(Math.random() * clientes.length);
+                        const cliente = clientes[indice];
+
+                        document.getElementById('puntaje_credito').value = cliente.puntaje_credito;
+                        document.getElementById('ingresos_mensuales').value = cliente.ingresos_mensuales;
+                        document.getElementById('cuota_prestamo').value = cliente.cuota_prestamo;
+                        document.getElementById('proporcion_deuda_ingreso').value = cliente.proporcion_deuda_ingreso;
+                        document.getElementById('tipo_empleo').value = cliente.tipo_empleo;
+                        document.getElementById('años_empleo').value = cliente.años_empleo;
+                        document.getElementById('tipo_garantia').value = cliente.tipo_garantia;
+                        document.getElementById('historial_prestamos').value = cliente.historial_prestamos;
+                    }
+                } catch (error) {
+                    console.error('Error al cargar cliente de ejemplo:', error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
